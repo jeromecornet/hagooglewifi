@@ -6,6 +6,8 @@
           "description": "Please get a refresh token from https://www.angelod.com/onhubauthtool to configure the integration.",
           "data": {
             "refresh_token": "Refresh Token",
+            "username": "Username (email)",
+            "android_id": "Android id for the refresh token",            
             "add_disabled": "Add all entities as enabled?"
           }
         }
@@ -23,7 +25,9 @@
       "step": {
         "init": {
           "data": {
-            "refresh_token": "Enter the refresh token obtained from https://www.angelod.com/onhubauthtool",
+            "username": "Enter the username (email)",
+            "refresh_token": "Enter the refresh token ",
+            "android_id": "Enter the android id for the refresh token",
             "add_disabled": "Add all entities as enabled?",
             "scan_interval": "Polling Interval (seconds)",
             "auto_speedtest": "Run speed test automatically?",

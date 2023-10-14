@@ -5,7 +5,7 @@ import time
 from datetime import timedelta
 
 import voluptuous as vol
-from googlewifi import GoogleHomeIgnoreDevice, GoogleWifi, GoogleWifiException
+from .googlewifiapi import GoogleHomeIgnoreDevice, GoogleWifi, GoogleWifiException
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import CoreState, HomeAssistant, callback
@@ -28,6 +28,8 @@ from .const import (
     DOMAIN,
     GOOGLEWIFI_API,
     POLLING_INTERVAL,
+    USERNAME,
+    ANDROID_ID,
     REFRESH_TOKEN,
     SIGNAL_ADD_DEVICE,
     SIGNAL_DELETE_DEVICE,
@@ -55,7 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     session = aiohttp_client.async_get_clientsession(hass)
 
-    api = GoogleWifi(refresh_token=conf[REFRESH_TOKEN], session=session)
+    api = GoogleWifi(hass=hass, username=conf[USERNAME], refresh_token=conf[REFRESH_TOKEN], android_id=conf[ANDROID_ID],session=session)
 
     try:
         await api.connect()
@@ -71,7 +73,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         api=api,
         name="GoogleWifi",
         polling_interval=polling_interval,
+        username=conf[USERNAME],
         refresh_token=conf[REFRESH_TOKEN],
+        android_id=conf[ANDROID_ID],
         entry=entry,
         add_disabled=conf.get(ADD_DISABLED, True),
         auto_speedtest=conf_options.get(CONF_SPEEDTEST, DEFAULT_SPEEDTEST),
@@ -135,7 +139,9 @@ class GoogleWiFiUpdater(DataUpdateCoordinator):
         api: str,
         name: str,
         polling_interval: int,
+        username: str,
         refresh_token: str,
+        android_id: str,
         entry: ConfigEntry,
         add_disabled: bool,
         auto_speedtest: str,
@@ -143,7 +149,9 @@ class GoogleWiFiUpdater(DataUpdateCoordinator):
     ):
         """Initialize the global Google Wifi data updater."""
         self.api = api
+        self.username = username
         self.refresh_token = refresh_token
+        self.android_id = android_id
         self.entry = entry
         self.add_disabled = add_disabled
         self._last_speedtest = 0
@@ -168,7 +176,21 @@ class GoogleWiFiUpdater(DataUpdateCoordinator):
         """Fetch data from Google Wifi API."""
 
         try:
+            if self.api.has_api_token():
+                _LOGGER.debug("Got an api token")
+            else:
+                _LOGGER.debug("No api token, getting one")            
+                await self.api.get_api_token()
+
+                if self.api.has_api_token():
+                    _LOGGER.debug("Got an api token")
+                else:
+                    _LOGGER.warning("No api token, this will fail")
+
             system_data = await self.api.get_systems()
+            
+            if system_data is None:
+                raise ConfigEntryNotReady("Google Wifi has returned no system")
 
             for system_id, system in system_data.items():
                 connected_count = 0
@@ -238,7 +260,7 @@ class GoogleWiFiUpdater(DataUpdateCoordinator):
             return system_data
         except GoogleWifiException as error:
             session = aiohttp_client.async_create_clientsession(self.hass)
-            self.api = GoogleWifi(refresh_token=self.refresh_token, session=session)
+            self.api = GoogleWifi(hass=self.hass, username=self.username, refresh_token=self.refresh_token,android_id=self.android_id, session=session)
         except GoogleHomeIgnoreDevice as error:
             raise UpdateFailed(f"Error connecting to GoogleWifi: {error}") from error
         except ConnectionError as error:

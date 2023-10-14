@@ -23,7 +23,9 @@
       "step": {
         "init": {
           "data": {
-            "refresh_token": "Enter the refresh token obtained from https://www.angelod.com/onhubauthtool",
+            "username": "Enter the username (email)",
+            "refresh_token": "Enter the refresh token ",
+            "android_id": "Enter the android id for the refresh token",
             "add_disabled": "Add all entities as enabled?",
             "scan_interval": "Polling Interval (seconds)",
             "auto_speedtest": "Run speed test automatically?",
